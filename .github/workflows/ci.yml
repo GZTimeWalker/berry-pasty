@@ -1,0 +1,89 @@
+name: Build Docker Image
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  docker:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: "aarch64-unknown-linux-musl,x86_64-unknown-linux-musl"
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+
+      - name: Install dependencies
+        working-directory: /tmp
+        run: |
+          wget https://musl.cc/aarch64-linux-musl-cross.tgz --quiet
+          tar -xf aarch64-linux-musl-cross.tgz -C . && rm aarch64-linux-musl-cross.tgz
+
+      - name: Build Binary
+        env:
+          RUSTFLAGS: "-C target-feature=+crt-static"
+        run: |
+          mkdir -p binaries/linux/{arm64,amd64}
+          export PATH=$PATH:/tmp/aarch64-linux-musl-cross/bin
+
+          cargo build --release --target aarch64-unknown-linux-musl
+          mv target/aarch64-unknown-linux-musl/release/berry-pasty binaries/linux/arm64/berry-pasty
+
+          cargo build --release --target x86_64-unknown-linux-musl
+          mv target/x86_64-unknown-linux-musl/release/berry-pasty binaries/linux/amd64/berry-pasty
+
+          pwd && ls -lhR binaries
+
+      - name: Upload binary for aarch64
+        uses: actions/upload-artifact@v4
+        with:
+          name: berry-pasty-aarch64-linux64-musl
+          path: binaries/linux/arm64/berry-pasty
+
+      - name: Upload binary for x86_64
+        uses: actions/upload-artifact@v4
+        with:
+          name: berry-pasty-x86_64-linux64-musl
+          path: binaries/linux/amd64/berry-pasty
+
+      - name: Docker setup QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Docker setup Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            latest
+
+      - name: Publish images
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+          push: true

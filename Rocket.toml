@@ -1,0 +1,20 @@
+[default]
+address = "0.0.0.0"
+
+[default.limits]
+# 默认只允许存储大小至多 128 KiB 的纯文本或链接
+"plain/text" = "128 KiB"
+
+[default.pasty]
+# 数据库文件夹的目录，默认为 data
+db_path = "/data/berry-pasty.redb"
+
+# 添加链接或纯文本时需要的访问密码，如果不需要可以设为空，即 ""
+access_password = "password"
+
+# 随机产生的链接长度
+random_id_length = 8
+
+# 首页显示的文本，如果指定了下面的 index_link，那么会直接重定向到对应的链接
+index_text = "欢迎使用 Berry Pasty！"
+index_link = ""
