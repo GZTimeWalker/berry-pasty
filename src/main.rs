@@ -203,8 +203,21 @@ fn post_by_id(
     }
 }
 
-#[delete("/<id>?<pwd>")]
-fn delete_by_id(db: &State<Database>, id: &str, pwd: Option<&str>) -> (Status, Response) {
+#[delete("/<id>?<pwd>&<access>")]
+fn delete_by_id(
+    db: &State<Database>,
+    config: &State<Config>,
+    id: &str,
+    pwd: Option<&str>,
+    access: &str,
+) -> (Status, Response) {
+    if !config.access_password.is_empty() && access != config.access_password {
+        return (
+            Status::BadRequest,
+            Response::Error("访问密码错误".to_string()),
+        );
+    }
+
     match service::delete_pasty_by_id(db, id, pwd) {
         Ok(_) => (
             Status::Ok,
