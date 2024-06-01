@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
 use anyhow::bail;
-use redb::Database;
+use redb::{Database, ReadableTableMetadata};
 use rocket::State;
 
 use crate::*;
@@ -42,12 +42,10 @@ pub fn ensure_table_exists(db: &Database) -> anyhow::Result<()> {
 }
 
 pub fn get_stats_by_id(db: &State<Database>, id: &str) -> anyhow::Result<Stats> {
-    let key = stats_key(id);
-
     let stats = {
         let read_tx = db.begin_read()?;
         let table = read_tx.open_table(STATS_TABLE)?;
-        table.get(key.as_str())?
+        table.get(id)?
     };
 
     match stats {
@@ -57,20 +55,18 @@ pub fn get_stats_by_id(db: &State<Database>, id: &str) -> anyhow::Result<Stats> 
 }
 
 pub fn view_stats_by_id(db: &State<Database>, id: &str) -> anyhow::Result<()> {
-    let key = stats_key(id);
-
     let write_tx = db.begin_write()?;
     {
         let mut table = write_tx.open_table(STATS_TABLE)?;
 
-        let mut stats = match table.get(key.as_str())? {
+        let mut stats = match table.get(id)? {
             Some(stats) => stats.value(),
             None => Stats::new(),
         };
 
         stats.view();
 
-        table.insert(key.as_str(), stats)?;
+        table.insert(id, stats)?;
     }
     write_tx.commit()?;
 
@@ -82,13 +78,7 @@ fn check_token(
     id: &str,
     user_token: Option<&str>,
 ) -> anyhow::Result<Option<String>> {
-    let key = token_key(id);
-
-    let token = match db
-        .begin_read()?
-        .open_table(TOKEN_TABLE)?
-        .get(key.as_str())?
-    {
+    let token = match db.begin_read()?.open_table(TOKEN_TABLE)?.get(id)? {
         Some(token) => token.value(),
         None => bail!(PastyError::NotFound),
     };
@@ -109,16 +99,12 @@ fn check_token(
 pub fn get_pasty_by_id(db: &State<Database>, id: &str) -> anyhow::Result<Pasty> {
     let read_tx = db.begin_read()?;
 
-    let key = type_key(id);
-
-    let content_type = match read_tx.open_table(TYPE_TABLE)?.get(key.as_str())? {
+    let content_type = match read_tx.open_table(TYPE_TABLE)?.get(id)? {
         Some(bytes) => ContentType::from(bytes.value()),
         None => bail!(PastyError::NotFound),
     };
 
-    let key = content_key(id);
-
-    let content = match read_tx.open_table(CONTENT_TABLE)?.get(key.as_str())? {
+    let content = match read_tx.open_table(CONTENT_TABLE)?.get(id)? {
         Some(content) => content.value(),
         None => bail!(PastyError::NotFound),
     };
@@ -150,29 +136,25 @@ pub fn update_pasty_by_id(
     if token_insert {
         write_tx
             .open_table(TOKEN_TABLE)?
-            .insert(token_key(id).as_str(), user_token.map(|s| s.to_string()))?;
+            .insert(id, user_token.map(|s| s.to_string()))?;
     }
 
     let content_type: u8 = content_type.into();
 
-    write_tx
-        .open_table(TYPE_TABLE)?
-        .insert(type_key(id).as_str(), content_type)?;
+    write_tx.open_table(TYPE_TABLE)?.insert(id, content_type)?;
 
     write_tx
         .open_table(CONTENT_TABLE)?
-        .insert(content_key(id).as_str(), content.to_string())?;
+        .insert(id, content.to_string())?;
 
     let stats = write_tx
         .open_table(STATS_TABLE)?
-        .get(stats_key(id).as_str())?
+        .get(id)?
         .map(|stats| stats.value())
         .unwrap_or_else(Stats::new)
         .update();
 
-    write_tx
-        .open_table(STATS_TABLE)?
-        .insert(stats_key(id).as_str(), stats)?;
+    write_tx.open_table(STATS_TABLE)?.insert(id, stats)?;
 
     write_tx.commit()?;
 
@@ -188,18 +170,10 @@ pub fn delete_pasty_by_id(
 
     let write_tx = db.begin_write()?;
 
-    write_tx
-        .open_table(TYPE_TABLE)?
-        .remove(type_key(id).as_str())?;
-    write_tx
-        .open_table(CONTENT_TABLE)?
-        .remove(content_key(id).as_str())?;
-    write_tx
-        .open_table(TOKEN_TABLE)?
-        .remove(token_key(id).as_str())?;
-    write_tx
-        .open_table(STATS_TABLE)?
-        .remove(stats_key(id).as_str())?;
+    write_tx.open_table(TYPE_TABLE)?.remove(id)?;
+    write_tx.open_table(CONTENT_TABLE)?.remove(id)?;
+    write_tx.open_table(TOKEN_TABLE)?.remove(id)?;
+    write_tx.open_table(STATS_TABLE)?.remove(id)?;
 
     write_tx.commit()?;
 
@@ -213,6 +187,8 @@ pub fn list_all_pasties(db: &State<Database>) -> anyhow::Result<Vec<(Pasty, Stat
 
     let table = read_tx.open_table(TYPE_TABLE)?;
 
+    println!("table: {:?}", table.len());
+
     for item in table.iter()? {
         let (key, content_type) = match item {
             Ok(item) => item,
@@ -220,6 +196,7 @@ pub fn list_all_pasties(db: &State<Database>) -> anyhow::Result<Vec<(Pasty, Stat
         };
 
         let id = key.value();
+
         let content_type = ContentType::from(content_type.value());
 
         let content = match read_tx.open_table(CONTENT_TABLE)?.get(id)? {
@@ -227,10 +204,7 @@ pub fn list_all_pasties(db: &State<Database>) -> anyhow::Result<Vec<(Pasty, Stat
             None => continue,
         };
 
-        let stats = match read_tx
-            .open_table(STATS_TABLE)?
-            .get(stats_key(id).as_str())?
-        {
+        let stats = match read_tx.open_table(STATS_TABLE)?.get(id)? {
             Some(stats) => stats.value(),
             None => Stats::new(),
         };

@@ -7,7 +7,7 @@ address = "0.0.0.0"
 
 [default.pasty]
 # 数据库文件夹的目录，默认为 data
-db_path = "/data/berry-pasty.redb"
+db_path = "berry-pasty.redb"
 
 # 添加链接或纯文本时需要的访问密码，如果不需要可以设为空，即 ""
 access_password = "password"

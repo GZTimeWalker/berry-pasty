@@ -127,19 +127,19 @@ fn get_all(db: &State<Database>, config: &State<Config>, access: &str) -> (Statu
         );
     }
 
-    let mut response = String::new();
-
     let pasties = match service::list_all_pasties(db) {
         Ok(pasties) => pasties,
         Err(err) => return handle_pasty_error(err),
     };
 
+    let mut response = String::new();
+
     for (pasty, stats) in pasties {
         response.push_str(&format!(
-            "短链接：{}\t类型：{:?}\t访问次数：{}\n
-            内容：{}\n
-            创建时间：{}\n
-            更新时间：{}\n
+            "短链接：{}\t类型：{:?}\t访问次数：{}\n\
+            内容：{}\n\
+            创建时间：{}\n\
+            更新时间：{}\n\
             最后访问时间：{}\n\n",
             pasty.id,
             pasty.content_type,

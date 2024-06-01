@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use redb::TypeName;
 
 pub struct Pasty {
     pub id: String,
@@ -109,38 +110,3 @@ impl redb::Value for Stats {
         TypeName::new("stats")
     }
 }
-
-pub enum KeyType {
-    Type,
-    Content,
-    Token,
-    Stats,
-}
-
-pub const fn key_type_str(t: KeyType) -> &'static str {
-    match t {
-        KeyType::Type => "t",
-        KeyType::Content => "ct",
-        KeyType::Token => "tk",
-        KeyType::Stats => "st",
-    }
-}
-
-use paste::paste;
-use redb::TypeName;
-
-macro_rules! key_fn {
-    ($key_type:ident) => {
-        paste! {
-            #[inline]
-            pub fn [<$key_type:lower _key>](id: &str) -> String {
-                format!("{}:{}", id, key_type_str(KeyType::$key_type))
-            }
-        }
-    };
-}
-
-key_fn!(Type);
-key_fn!(Content);
-key_fn!(Token);
-key_fn!(Stats);

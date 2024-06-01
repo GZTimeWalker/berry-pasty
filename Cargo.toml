@@ -12,7 +12,6 @@ url = "2.2"
 rocket = "0.5"
 anyhow = "1.0"
 chrono = "0.4"
-paste = "1.0"
 
 [profile.release]
 opt-level = 3
