@@ -55,6 +55,17 @@ fn handle_pasty_error(err: anyhow::Error) -> (Status, Response) {
     }
 }
 
+fn check_access(config: &State<Config>, access: &str) -> Option<(Status, Response)> {
+    if !config.access_password.is_empty() && access != config.access_password {
+        Some((
+            Status::Unauthorized,
+            Response::Error("访问密码错误".to_string()),
+        ));
+    }
+
+    None
+}
+
 const ALPHABET: [char; 62] = [
     '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i',
     'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'A', 'B',
@@ -120,11 +131,8 @@ fn get_stat_by_id(db: &State<Database>, id: &str) -> (Status, Response) {
 
 #[get("/all?<access>")]
 fn get_all(db: &State<Database>, config: &State<Config>, access: &str) -> (Status, Response) {
-    if !config.access_password.is_empty() && access != config.access_password {
-        return (
-            Status::BadRequest,
-            Response::Error("访问密码错误".to_string()),
-        );
+    if let Some(response) = check_access(config, access) {
+        return response;
     }
 
     let pasties = match service::list_all_pasties(db) {
@@ -137,17 +145,17 @@ fn get_all(db: &State<Database>, config: &State<Config>, access: &str) -> (Statu
     for (pasty, stats) in pasties {
         response.push_str(&format!(
             "短链接：{}\t类型：{:?}\t访问次数：{}\n\
-            内容：{}\n\
             创建时间：{}\n\
             更新时间：{}\n\
-            最后访问时间：{}\n\n",
+            最后访问时间：{}\n\
+            内容：{}\n\n",
             pasty.id,
             pasty.content_type,
             stats.views,
-            pasty.content,
             stats.created_at.to_rfc3339(),
             stats.updated_at.to_rfc3339(),
-            stats.last_viewed_at.to_rfc3339()
+            stats.last_viewed_at.to_rfc3339(),
+            pasty.content
         ));
     }
 
@@ -164,11 +172,8 @@ fn post_by_id(
     access: &str,
     content: &str,
 ) -> (Status, Response) {
-    if !config.access_password.is_empty() && access != config.access_password {
-        return (
-            Status::BadRequest,
-            Response::Error("访问密码错误".to_string()),
-        );
+    if let Some(response) = check_access(config, access) {
+        return response;
     }
 
     if id.is_empty() {
@@ -211,11 +216,8 @@ fn delete_by_id(
     pwd: Option<&str>,
     access: &str,
 ) -> (Status, Response) {
-    if !config.access_password.is_empty() && access != config.access_password {
-        return (
-            Status::BadRequest,
-            Response::Error("访问密码错误".to_string()),
-        );
+    if let Some(response) = check_access(config, access) {
+        return response;
     }
 
     match service::delete_pasty_by_id(db, id, pwd) {
