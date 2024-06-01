@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
 use anyhow::bail;
-use redb::{Database, ReadableTableMetadata};
+use redb::Database;
 use rocket::State;
 
 use crate::*;
@@ -186,8 +186,6 @@ pub fn list_all_pasties(db: &State<Database>) -> anyhow::Result<Vec<(Pasty, Stat
     let mut pasties = Vec::new();
 
     let table = read_tx.open_table(TYPE_TABLE)?;
-
-    println!("table: {:?}", table.len());
 
     for item in table.iter()? {
         let (key, content_type) = match item {
