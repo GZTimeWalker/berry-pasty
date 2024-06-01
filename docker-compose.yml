@@ -1,0 +1,12 @@
+version: "3"
+
+services:
+  berry-pasty:
+    image: gztime/berry-pasty
+    container_name: berry-pasty
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    volumes:
+      - ./berry-pasty.redb:/app/berry-pasty.redb
+      - ./Rocket.toml:/app/Rocket.toml:ro

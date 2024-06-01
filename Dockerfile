@@ -12,6 +12,5 @@ ADD Rocket.toml /app
 COPY --from=build /berry-pasty /app
 
 EXPOSE 8000
-VOLUME [ "/data" ]
 
 ENTRYPOINT ["/app/berry-pasty"]
