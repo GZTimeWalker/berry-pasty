@@ -106,7 +106,7 @@ fn check_token(
     Ok(token)
 }
 
-pub fn get_pasty_by_id<'a>(db: &State<Database>, id: &'a str) -> anyhow::Result<Pasty<'a>> {
+pub fn get_pasty_by_id(db: &State<Database>, id: &str) -> anyhow::Result<Pasty> {
     let read_tx = db.begin_read()?;
 
     let key = type_key(id);
@@ -124,7 +124,7 @@ pub fn get_pasty_by_id<'a>(db: &State<Database>, id: &'a str) -> anyhow::Result<
     };
 
     Ok(Pasty {
-        id,
+        id: id.to_owned(),
         content_type,
         content,
     })
@@ -204,4 +204,46 @@ pub fn delete_pasty_by_id(
     write_tx.commit()?;
 
     Ok(())
+}
+
+pub fn list_all_pasties(db: &State<Database>) -> anyhow::Result<Vec<(Pasty, Stats)>> {
+    let read_tx = db.begin_read()?;
+
+    let mut pasties = Vec::new();
+
+    let table = read_tx.open_table(TYPE_TABLE)?;
+
+    for item in table.iter()? {
+        let (key, content_type) = match item {
+            Ok(item) => item,
+            Err(err) => return Err(err.into()),
+        };
+
+        let id = key.value();
+        let content_type = ContentType::from(content_type.value());
+
+        let content = match read_tx.open_table(CONTENT_TABLE)?.get(id)? {
+            Some(content) => content.value(),
+            None => continue,
+        };
+
+        let stats = match read_tx
+            .open_table(STATS_TABLE)?
+            .get(stats_key(id).as_str())?
+        {
+            Some(stats) => stats.value(),
+            None => Stats::new(),
+        };
+
+        pasties.push((
+            Pasty {
+                id: id.to_owned(),
+                content_type,
+                content,
+            },
+            stats,
+        ));
+    }
+
+    Ok(pasties)
 }

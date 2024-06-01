@@ -118,6 +118,42 @@ fn get_stat_by_id(db: &State<Database>, id: &str) -> (Status, Response) {
     }
 }
 
+#[get("/all?<access>")]
+fn get_all(db: &State<Database>, config: &State<Config>, access: &str) -> (Status, Response) {
+    if !config.access_password.is_empty() && access != config.access_password {
+        return (
+            Status::BadRequest,
+            Response::Error("访问密码错误".to_string()),
+        );
+    }
+
+    let mut response = String::new();
+
+    let pasties = match service::list_all_pasties(db) {
+        Ok(pasties) => pasties,
+        Err(err) => return handle_pasty_error(err),
+    };
+
+    for (pasty, stats) in pasties {
+        response.push_str(&format!(
+            "短链接：{}\t类型：{:?}\t访问次数：{}\n
+            内容：{}\n
+            创建时间：{}\n
+            更新时间：{}\n
+            最后访问时间：{}\n\n",
+            pasty.id,
+            pasty.content_type,
+            stats.views,
+            pasty.content,
+            stats.created_at.to_rfc3339(),
+            stats.updated_at.to_rfc3339(),
+            stats.last_viewed_at.to_rfc3339()
+        ));
+    }
+
+    (Status::Ok, Response::PlainText(response))
+}
+
 #[post("/<id>?<type>&<pwd>&<access>", data = "<content>")]
 fn post_by_id(
     db: &State<Database>,
@@ -208,6 +244,7 @@ async fn main() {
             "/",
             routes![
                 get_index,
+                get_all,
                 post_index,
                 get_by_id,
                 get_stat_by_id,

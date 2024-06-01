@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 
-pub struct Pasty<'a> {
-    pub id: &'a str,
+pub struct Pasty {
+    pub id: String,
     pub content_type: ContentType,
     pub content: String,
 }
