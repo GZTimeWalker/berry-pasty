@@ -5,6 +5,7 @@ use nanoid::nanoid;
 use redb::{Database, ReadableTable, TableDefinition};
 use rocket::http::Status;
 use rocket::response::Redirect;
+use rocket::serde::json::{json, Value};
 use rocket::State;
 use service::PastyError;
 use std::convert::TryInto;
@@ -20,8 +21,8 @@ mod service;
 
 #[derive(Debug, Responder)]
 enum Response {
-    PlainText(String),
-    Error(String),
+    Json(Value),
+    Plaintext(String),
     Redirect(Box<Redirect>),
 }
 
@@ -30,36 +31,49 @@ fn get_index(config: &State<Config>) -> Response {
     if !config.index_link.is_empty() {
         Response::Redirect(Box::new(Redirect::to(config.index_link.clone())))
     } else {
-        Response::PlainText(config.index_text.clone())
+        Response::Json(json!({
+            "status": "200",
+            "message": config.index_text
+        }))
     }
+}
+
+macro_rules! json_with_status {
+    ($status:expr, $message:expr) => {
+        (
+            $status,
+            Response::Json(json!({
+                "status": $status.code,
+                "message": $message
+            }))
+        )
+    };
 }
 
 fn handle_pasty_error(err: anyhow::Error) -> (Status, Response) {
     match err.downcast_ref::<PastyError>() {
-        Some(PastyError::NotFound) => (
-            Status::NotFound,
-            Response::Error("此短链接不存在".to_string()),
-        ),
-        Some(PastyError::TokenRequired) => (
+        Some(PastyError::NotFound) => {
+            json_with_status!(Status::NotFound, "The short link does not exist.")
+        }
+        Some(PastyError::TokenRequired) => json_with_status!(
             Status::BadRequest,
-            Response::Error("此短链接需要访问密码".to_string()),
+            "An access token is required for this action."
         ),
-        Some(PastyError::TokenMismatch) => (
-            Status::BadRequest,
-            Response::Error("访问密码错误".to_string()),
-        ),
-        _ => (
+        Some(PastyError::TokenMismatch) => {
+            json_with_status!(Status::BadRequest, "The access token is incorrect.")
+        }
+        _ => json_with_status!(
             Status::InternalServerError,
-            Response::Error(format!("服务器内部错误：{}", err)),
+            format!("Internal server error: {}", err)
         ),
     }
 }
 
 fn check_access(config: &State<Config>, access: &str) -> Option<(Status, Response)> {
     if !config.access_password.is_empty() && access != config.access_password {
-        Some((
+        return Some(json_with_status!(
             Status::Unauthorized,
-            Response::Error("访问密码错误".to_string()),
+            "Access password is incorrect."
         ));
     }
 
@@ -94,7 +108,7 @@ fn get_by_id(db: &State<Database>, id: &str) -> (Status, Response) {
             service::view_stats_by_id(db, id).ok();
 
             match pasty.content_type {
-                ContentType::Plaintext => (Status::Ok, Response::PlainText(pasty.content)),
+                ContentType::Plaintext => (Status::Ok, Response::Plaintext(pasty.content)),
                 ContentType::Redirect => (
                     Status::Found,
                     Response::Redirect(Box::new(Redirect::to(pasty.content))),
@@ -115,14 +129,13 @@ fn get_stat_by_id(db: &State<Database>, id: &str) -> (Status, Response) {
             let last_viewed_at = stats.last_viewed_at.to_rfc3339();
             (
                 Status::Ok,
-                Response::PlainText(format!(
-                    "短链接 {} 的统计信息：\n\n\
-                    - 访问次数：{}\n\
-                    - 创建时间：{}\n\
-                    - 更新时间：{}\n\
-                    - 最后访问时间：{}",
-                    id, views, created_at, updated_at, last_viewed_at
-                )),
+                Response::Json(json!({
+                    "id": id,
+                    "views": views,
+                    "created_at": created_at,
+                    "updated_at": updated_at,
+                    "last_viewed_at": last_viewed_at
+                })),
             )
         }
         Err(err) => handle_pasty_error(err),
@@ -140,26 +153,23 @@ fn get_all(db: &State<Database>, config: &State<Config>, access: &str) -> (Statu
         Err(err) => return handle_pasty_error(err),
     };
 
-    let mut response = String::new();
-
-    for (pasty, stats) in pasties {
-        response.push_str(&format!(
-            "短链接：{}\t类型：{:?}\t访问次数：{}\n\
-            创建时间：{}\n\
-            更新时间：{}\n\
-            最后访问时间：{}\n\
-            内容：{}\n\n",
-            pasty.id,
-            pasty.content_type,
-            stats.views,
-            stats.created_at.to_rfc3339(),
-            stats.updated_at.to_rfc3339(),
-            stats.last_viewed_at.to_rfc3339(),
-            pasty.content
-        ));
-    }
-
-    (Status::Ok, Response::PlainText(response))
+    (
+        Status::Ok,
+        Response::Json(json!(pasties
+            .into_iter()
+            .map(|(pasty, stats)| {
+                json!({
+                    "id": pasty.id,
+                    "content_type": pasty.content_type,
+                    "views": stats.views,
+                    "created_at": stats.created_at.to_rfc3339(),
+                    "updated_at": stats.updated_at.to_rfc3339(),
+                    "last_viewed_at": stats.last_viewed_at.to_rfc3339(),
+                    "content": pasty.content
+                })
+            })
+            .collect::<Vec<Value>>())),
+    )
 }
 
 #[post("/<id>?<type>&<pwd>&<access>", data = "<content>")]
@@ -177,32 +187,24 @@ fn post_by_id(
     }
 
     if id.is_empty() {
-        return (Status::BadRequest, Response::Error("缺少参数".to_string()));
+        return json_with_status!(Status::BadRequest, "Missing parameter");
     }
 
     let content_type = match r#type {
         Some("link") => ContentType::Redirect,
         Some("plain") => ContentType::Plaintext,
         None => ContentType::Plaintext,
-        _ => {
-            return (
-                Status::BadRequest,
-                Response::Error("不支持的短链接类型".to_string()),
-            )
-        }
+        _ => return json_with_status!(Status::BadRequest, "Unsupported short link type"),
     };
 
     if content_type == ContentType::Redirect && Url::parse(content).is_err() {
-        return (
-            Status::BadRequest,
-            Response::Error("给定的链接不是有效的 URL".to_string()),
-        );
+        return json_with_status!(Status::BadRequest, "The given link is not a valid URL");
     }
 
     match service::update_pasty_by_id(db, id, content, content_type, pwd) {
-        Ok(_) => (
+        Ok(_) => json_with_status!(
             Status::Ok,
-            Response::PlainText(format!("更新数据成功：{}", id)),
+            format!("The short link has been updated: {}", id)
         ),
         Err(err) => handle_pasty_error(err),
     }
@@ -221,22 +223,22 @@ fn delete_by_id(
     }
 
     match service::delete_pasty_by_id(db, id, pwd) {
-        Ok(_) => (
+        Ok(_) => json_with_status!(
             Status::Ok,
-            Response::PlainText(format!("删除数据成功：{}", id)),
+            format!("The short link has been deleted: {}", id)
         ),
         Err(err) => handle_pasty_error(err),
     }
 }
 
 #[catch(404)]
-fn not_found() -> &'static str {
-    "此链接不存在。如果你正在更新链接，可能是漏了参数！"
+fn not_found() -> (Status, Response) {
+    json_with_status!(Status::NotFound, "The requested resource was not found.")
 }
 
 #[catch(500)]
-fn internal_error() -> &'static str {
-    "服务器内部出错"
+fn internal_error() -> (Status, Response) {
+    json_with_status!(Status::InternalServerError, "Internal server error.")
 }
 
 #[rocket::main]

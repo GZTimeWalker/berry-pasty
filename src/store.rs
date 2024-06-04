@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
 use redb::TypeName;
+use serde::Serialize;
 
 pub struct Pasty {
     pub id: String,
@@ -7,7 +8,8 @@ pub struct Pasty {
     pub content: String,
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "lowercase")]
 pub enum ContentType {
     Plaintext = 0,
     Redirect = 1,
