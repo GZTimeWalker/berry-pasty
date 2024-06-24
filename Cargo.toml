@@ -1,6 +1,6 @@
 [package]
 name = "berry-pasty"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["GZTime <Time.GZ@outlook.com>"]
 
@@ -8,7 +8,7 @@ authors = ["GZTime <Time.GZ@outlook.com>"]
 serde = "1.0"
 redb = "2.1"
 nanoid = "0.4"
-url = "2.2"
+url = "2.5"
 anyhow = "1.0"
 chrono = "0.4"
 
