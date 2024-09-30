@@ -1,6 +1,12 @@
 # Berry Pasty
 
-A simple pure Rust pastebin and url shortener, inspired by [pasty](https://github.com/darkyzhou/pasty).
+A simple **pure Rust** pastebin and url shortener, inspired by [pasty](https://github.com/darkyzhou/pasty).
+
+> [!TIP]
+>
+> **The image size is only 5.92MB (2.3MB compressed), currently support x86_64, aarch64.**
+>
+> Theoretically, it can be compiled to any Rust-supported architecture and run as a single binary.
 
 ## Usage
 
