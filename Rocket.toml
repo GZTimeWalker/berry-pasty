@@ -17,5 +17,5 @@ random_id_length = 8
 
 # The text displayed on the index page,
 # if index_link is specified, it will redirect to the link directly
-index_text = "欢迎使用 Berry Pasty！"
+index_text = "Welcome Berry Pasty！"
 index_link = ""
