@@ -260,11 +260,11 @@ async fn main() {
         .mount(
             "/",
             routes![
-                get_index,
                 get_all,
-                post_index,
-                get_by_id,
                 get_stat_by_id,
+                get_index,
+                get_by_id,
+                post_index,
                 post_by_id,
                 delete_by_id
             ],
