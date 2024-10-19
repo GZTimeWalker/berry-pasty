@@ -116,7 +116,6 @@ jobs:
         uses: dataaxiom/ghcr-cleanup-action@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          package: ${{ github.repository }}
           exclude-tags: latest
           validate: true
           dry-run: false
