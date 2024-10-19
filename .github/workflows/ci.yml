@@ -2,17 +2,24 @@ name: Build Docker Image
 
 on:
   push:
-    branches: [main]
+    branches: ["main"]
+    paths: ["**/*.rs", "**/*.toml", "**/*.lock"]
   workflow_dispatch:
+    inputs:
+      skip-build:
+        type: boolean
+        description: "Skip build step"
+        default: false
+        required: false
 
 jobs:
   build:
     name: Build Docker Image
     runs-on: ubuntu-latest
+    if: ${{ !github.event.inputs.skip-build }}
     permissions:
       contents: read
       packages: write
-
     steps:
       - uses: actions/checkout@v4
 
