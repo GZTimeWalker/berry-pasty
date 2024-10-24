@@ -4,7 +4,7 @@ A simple **pure Rust** pastebin and url shortener, inspired by [pasty](https://g
 
 > [!TIP]
 >
-> **The image size is only 5.92MB (2.3MB compressed), currently support x86_64, aarch64.**
+> **The image size is only 3.9MiB (1.77MiB compressed), currently support x86_64, aarch64.**
 >
 > Theoretically, it can be compiled to any Rust-supported architecture and run as a single binary.
 
