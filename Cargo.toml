@@ -1,24 +1,24 @@
 [package]
+authors = [ "GZTime <Time.GZ@outlook.com>" ]
+edition = "2021"
 name = "berry-pasty"
 version = "0.1.5"
-edition = "2021"
-authors = ["GZTime <Time.GZ@outlook.com>"]
 
 [dependencies]
-serde = "1.0"
-redb = "2.2"
-nanoid = "0.4"
-url = "2.5"
 anyhow = "1.0"
 chrono = "0.4"
+nanoid = "0.4"
+redb = "2.2"
+serde = "1.0"
+url = "2.5"
 
 [dependencies.rocket]
+features = [ "json" ]
 version = "0.5"
-features = ["json"]
 
 [profile.release]
-opt-level = 3
-strip = true
-lto = "thin"
 codegen-units = 1
+lto = "thin"
+opt-level = 3
 panic = "abort"
+strip = true
