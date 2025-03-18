@@ -64,11 +64,13 @@ impl Stats {
 }
 
 impl redb::Value for Stats {
-    type SelfType<'a> = Stats
+    type SelfType<'a>
+        = Stats
     where
         Self: 'a;
 
-    type AsBytes<'a> = [u8; Self::SIZE]
+    type AsBytes<'a>
+        = [u8; Self::SIZE]
     where
         Self: 'a;
 
