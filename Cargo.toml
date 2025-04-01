@@ -1,6 +1,6 @@
 [package]
 authors = [ "GZTime <Time.GZ@outlook.com>" ]
-edition = "2021"
+edition = "2024"
 name = "berry-pasty"
 version = "0.1.5"
 
