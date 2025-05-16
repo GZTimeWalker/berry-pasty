@@ -3,10 +3,10 @@ extern crate rocket;
 
 use nanoid::nanoid;
 use redb::{Database, ReadableTable, TableDefinition};
+use rocket::State;
 use rocket::http::Status;
 use rocket::response::Redirect;
-use rocket::serde::json::{json, Value};
-use rocket::State;
+use rocket::serde::json::{Value, json};
 use service::PastyError;
 use std::convert::TryInto;
 use url::Url;
@@ -155,20 +155,22 @@ fn get_all(db: &State<Database>, config: &State<Config>, access: &str) -> (Statu
 
     (
         Status::Ok,
-        Response::Json(json!(pasties
-            .into_iter()
-            .map(|(pasty, stats)| {
-                json!({
-                    "id": pasty.id,
-                    "content_type": pasty.content_type,
-                    "views": stats.views,
-                    "created_at": stats.created_at.to_rfc3339(),
-                    "updated_at": stats.updated_at.to_rfc3339(),
-                    "last_viewed_at": stats.last_viewed_at.to_rfc3339(),
-                    "content": pasty.content
+        Response::Json(json!(
+            pasties
+                .into_iter()
+                .map(|(pasty, stats)| {
+                    json!({
+                        "id": pasty.id,
+                        "content_type": pasty.content_type,
+                        "views": stats.views,
+                        "created_at": stats.created_at.to_rfc3339(),
+                        "updated_at": stats.updated_at.to_rfc3339(),
+                        "last_viewed_at": stats.last_viewed_at.to_rfc3339(),
+                        "content": pasty.content
+                    })
                 })
-            })
-            .collect::<Vec<Value>>())),
+                .collect::<Vec<Value>>()
+        )),
     )
 }
 
