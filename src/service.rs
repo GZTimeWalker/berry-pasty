@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
 use anyhow::bail;
-use redb::Database;
+use redb::{Database, ReadableDatabase};
 use rocket::State;
 
 use crate::*;

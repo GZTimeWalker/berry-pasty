@@ -21,31 +21,35 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: "aarch64-unknown-linux-musl,x86_64-unknown-linux-musl"
+          targets: "x86_64-unknown-linux-musl"
+
+      - name: Install cargo-binstall
+        uses: cargo-bins/cargo-binstall@main
+
+      - name: Docker setup QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Docker setup Buildx
+        uses: docker/setup-buildx-action@v3
 
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
 
-      - name: Install dependencies
-        working-directory: /tmp
-        run: |
-          wget https://musl.cc/aarch64-linux-musl-cross.tgz --quiet
-          tar -xf aarch64-linux-musl-cross.tgz -C . && rm aarch64-linux-musl-cross.tgz
-
       - name: Build Binary
         env:
           RUSTFLAGS: "-C target-feature=+crt-static"
         run: |
-          mkdir -p binaries/linux/{arm64,amd64}
-          export PATH=$PATH:/tmp/aarch64-linux-musl-cross/bin
+          cargo binstall --no-confirm cross
 
-          cargo build --release --target aarch64-unknown-linux-musl
+          mkdir -p binaries/linux/{arm64,amd64}
+
+          cross build --release --target aarch64-unknown-linux-musl
           mv target/aarch64-unknown-linux-musl/release/berry-pasty binaries/linux/arm64/berry-pasty
 
           cargo build --release --target x86_64-unknown-linux-musl
@@ -64,12 +68,6 @@ jobs:
         with:
           name: berry-pasty-x86_64-linux64-musl
           path: binaries/linux/amd64/berry-pasty
-
-      - name: Docker setup QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Docker setup Buildx
-        uses: docker/setup-buildx-action@v3
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3

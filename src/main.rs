@@ -251,8 +251,7 @@ async fn main() {
         .extract_inner("pasty")
         .expect("error loading configuration");
 
-    let mut db = Database::create(config.db_path.clone()).expect("error opening database");
-    db.upgrade().expect("error upgrading database");
+    let db = Database::create(config.db_path.clone()).expect("error opening database");
 
     service::ensure_table_exists(&db).expect("error ensuring table exists");
 
