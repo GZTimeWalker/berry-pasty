@@ -58,13 +58,13 @@ jobs:
           pwd && ls -lhR binaries
 
       - name: Upload binary for aarch64
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: berry-pasty-aarch64-linux64-musl
           path: binaries/linux/arm64/berry-pasty
 
       - name: Upload binary for x86_64
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: berry-pasty-x86_64-linux64-musl
           path: binaries/linux/amd64/berry-pasty
@@ -93,7 +93,7 @@ jobs:
             latest
 
       - name: Publish images
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           tags: ${{ steps.meta.outputs.tags }}
